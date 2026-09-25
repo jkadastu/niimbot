@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NiimbotWebPrint v0.0.1</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;margin:20px;background:#f5f5f5}
+.card{background:#fff;padding:15px;border-radius:10px;margin-bottom:20px;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+input{width:100%;padding:10px;margin:5px 0 10px;box-sizing:border-box}
+button{padding:12px 18px;margin-right:8px}
+.label-preview{width:320px;margin:auto;background:#fff;border:1px solid #ddd;padding:10px}
+.label-number{text-align:center;font-size:18px;font-weight:bold}
+.label-name{text-align:center;font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<h1>NiimbotWebPrint v0.0.1</h1>
+<div class="card">
+<label>Artikli number</label>
+<input id="articleNo" value="123456789">
+<label>Artikli nimetus</label>
+<input id="articleName" value="Testtoode">
+<button onclick="generateLabel()">Loo etikett</button>
+<button onclick="connectPrinter()">Ühenda printer</button>
+<div id="status">Printer ühendamata</div>
+</div>
+<div class="card">
+<div class="label-preview">
+<div id="previewNumber" class="label-number">123456789</div>
+<svg id="barcode"></svg>
+<div id="previewName" class="label-name">Testtoode</div>
+</div>
+</div>
+<script>
+let selectedPrinter=null;
+function generateLabel(){
+ const no=document.getElementById('articleNo').value;
+ const name=document.getElementById('articleName').value;
+ document.getElementById('previewNumber').textContent=no;
+ document.getElementById('previewName').textContent=name;
+ JsBarcode('#barcode',no,{format:'CODE128',width:2,height:80,displayValue:false});
+}
+async function connectPrinter(){
+ if(!navigator.bluetooth){document.getElementById('status').textContent='Web Bluetooth pole toetatud';return;}
+ try{
+ selectedPrinter=await navigator.bluetooth.requestDevice({acceptAllDevices:true});
+ document.getElementById('status').textContent='Ühendatud: '+(selectedPrinter.name||'Tundmatu seade');
+ }catch(e){document.getElementById('status').textContent='Ühendamine katkestati';}
+}
+generateLabel();
+</script>
+</body>
+</html>
