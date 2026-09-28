@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NiimbotWebPrint v0.1.2 — D110</title>
+<title>NiimbotWebPrint v0.1.3 — D110</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:15px;background:#f5f5f5;color:#222}
@@ -18,21 +18,21 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 </style>
 </head>
 <body>
-<h1>NiimbotWebPrint v0.1.2</h1>
-<p>D110 test rakendus (BLE) · 40 × 12 mm landscape</p>
+<h1>NiimbotWebPrint v0.1.3</h1>
+<p>D110 test rakendus (BLE) · 12 × 40 mm landscape</p>
 <div class="card"><h3>Süsteemiinfo</h3><div id="sysinfo"></div></div>
 <div class="card">
 <label for="articleNo">Artikli number</label><input id="articleNo" value="123456789" oninput="generateLabel()">
 <label for="articleName">Artikli nimetus</label><input id="articleName" value="Testtoode" oninput="generateLabel()">
 <div class="row2">
-<div><label for="labelWidth">Etiketi pikkus (mm)</label><input id="labelWidth" type="number" min="10" max="100" value="40" oninput="generateLabel()"></div>
-<div><label for="labelHeight">Etiketi laius (mm)</label><input id="labelHeight" type="number" min="8" max="15" value="12" oninput="generateLabel()"></div>
+<div><label for="labelHeight">Laius (mm)</label><input id="labelHeight" type="number" min="8" max="15" value="12" oninput="generateLabel()"></div>
+<div><label for="labelWidth">Pikkus (mm)</label><input id="labelWidth" type="number" min="10" max="100" value="40" oninput="generateLabel()"></div>
 </div>
 <div class="row2">
 <div><label for="density">Tihedus (1–5)</label><select id="density"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
 <div><label for="labelType">Etiketi tüüp</label><select id="labelType"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
 </div>
-<small>Etiketi pikkus kulgeb paberi liikumissuunas; printeripea laius on 12 mm. Eelvaade on rõhtne, printerisse saadetav bitmap pööratakse 90° päripäeva.</small>
+<small>Etiketi mõõt on Laius × Pikkus: 12 × 40 mm. Pikkus kulgeb paberi liikumissuunas; printeripea laius on 12 mm. Eelvaade on rõhtne, printerisse saadetav bitmap pööratakse 90° päripäeva.</small>
 <div style="margin-top:10px">
 <button id="connectBtn" type="button" onclick="connectPrinter()">Ühenda printer</button>
 <button id="disconnectBtn" type="button" onclick="disconnectPrinter()" disabled>Katkesta BT ühendus</button>
@@ -40,7 +40,7 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 <button id="printBtn" type="button" onclick="printLabel()" disabled>Prindi</button>
 </div><div id="status" role="status" aria-live="polite">Printer ühendamata</div>
 </div>
-<div class="card"><h3>Etiketi eelvaade (40 × 12 mm, õiget pidi)</h3><div class="label"><canvas id="previewCanvas" aria-label="Etiketi eelvaade"></canvas></div><small>Üleval nimetus, keskel madalam Code128, all suurem artiklinumber. Triipkoodi otstes on vaba turvatsoon.</small></div>
+<div class="card"><h3>Etiketi eelvaade (12 × 40 mm, õiget pidi)</h3><div class="label"><canvas id="previewCanvas" aria-label="Etiketi eelvaade"></canvas></div><small>Üleval nimetus, keskel madalam Code128, all suurem artiklinumber. Triipkoodi otstes on vaba turvatsoon.</small></div>
 <div class="card"><h3>Diagnostika logi</h3><div id="log"></div></div>
 <script>
 // D110 ühendus ja trükikäskude järjestus põhinevad toimival v0.1.0 lähtefailil.
@@ -48,6 +48,7 @@ const NIIMBOT_SERVICE='e7810a71-73ae-499d-8c15-faa9aef0c3f2';
 const NIIMBOT_CHAR='bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
 const DOTS_PER_MM=8;
 let device=null,server=null,characteristic=null,pendingWait=null,printing=false,connecting=false;
+let firstPrintAfterConnect=true;
 const $=id=>document.getElementById(id);
 function log(t){const text='['+new Date().toLocaleTimeString()+'] '+t; $('log').textContent+=text+'\n';$('log').scrollTop=$('log').scrollHeight;console.log(t)}
 function status(t){$('status').textContent=t}
@@ -65,9 +66,17 @@ function waitFor(cmd,timeoutMs=3000){cancelWait();return new Promise(resolve=>{c
 async function sendAndWait(cmd,data,respCmd,timeoutMs=3000){const response=respCmd!=null?waitFor(respCmd,timeoutMs):null;try{await writeRaw(buildPacket(cmd,data))}catch(e){cancelWait();throw e}return response?await response:null}
 function onDisconnected(){log('GATT ühendus katkes');cancelWait();if(characteristic)characteristic.removeEventListener('characteristicvaluechanged',onNotify);characteristic=null;server=null;status('Printer ühendamata');buttons()}
 async function disconnectPrinter(){if(printing){log('Trükkimine käib; oota lõpuni');return}if(!device?.gatt?.connected){status('Printer ühendamata');buttons();return}try{log('Katkestan GATT ühenduse...');cancelWait();if(characteristic){characteristic.removeEventListener('characteristicvaluechanged',onNotify);try{await characteristic.stopNotifications()}catch(e){log('Teavituste peatamine: '+e.message)}}device.gatt.disconnect();characteristic=null;server=null;status('BT ühendus katkestatud');log('BT ühendus katkestatud; printerit saab kasutada teises rakenduses')}catch(e){log('Katkestamise viga: '+e.message);status('Katkestamise viga: '+e.message)}finally{buttons()}}
-async function connectPrinter(){if(connecting||printing)return;if(!navigator.bluetooth){log('Web Bluetooth puudub');return}connecting=true;buttons();try{if(device?.gatt?.connected){device.gatt.disconnect()}log('Ava Bluetoothi valija...');device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[NIIMBOT_SERVICE,0x1800,0x1801,0x180a,0x180f]});device.addEventListener('gattserverdisconnected',onDisconnected);log('Valitud seade: '+(device.name||'Tundmatu'));status('Ühendan: '+(device.name||'Tundmatu'));server=await device.gatt.connect();log('GATT ühendatud');let service;try{service=await server.getPrimaryService(NIIMBOT_SERVICE)}catch(e){log('Niimboti teenust ei leitud: '+e.message);const services=await server.getPrimaryServices();for(const s of services)log('SERVICE: '+s.uuid);throw new Error('Printimisteenust ei leitud')}characteristic=await service.getCharacteristic(NIIMBOT_CHAR);await characteristic.startNotifications();characteristic.addEventListener('characteristicvaluechanged',onNotify);log('Characteristic valmis; saadan Connect käsu...');const response=waitFor(0xc2,3000);try{await writeRaw(buildConnectPacket())}catch(e){cancelWait();throw e}const resp=await response;log(resp?'Connect vastus: '+toHex(resp):'Connect vastust ei tulnud; GATT ühendus olemas');status('Ühendatud: '+(device.name||'Printer'))}catch(e){log('Ühenduse viga: '+e.message);status('Viga ühendamisel: '+e.message);if(device?.gatt?.connected)device.gatt.disconnect();characteristic=null;server=null}finally{connecting=false;buttons()}}
+async function connectPrinter(){if(connecting||printing)return;if(!navigator.bluetooth){log('Web Bluetooth puudub');return}connecting=true;buttons();try{if(device?.gatt?.connected){device.gatt.disconnect()}log('Ava Bluetoothi valija...');device=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[NIIMBOT_SERVICE,0x1800,0x1801,0x180a,0x180f]});device.addEventListener('gattserverdisconnected',onDisconnected);log('Valitud seade: '+(device.name||'Tundmatu'));status('Ühendan: '+(device.name||'Tundmatu'));server=await device.gatt.connect();log('GATT ühendatud');let service;try{service=await server.getPrimaryService(NIIMBOT_SERVICE)}catch(e){log('Niimboti teenust ei leitud: '+e.message);const services=await server.getPrimaryServices();for(const s of services)log('SERVICE: '+s.uuid);throw new Error('Printimisteenust ei leitud')}characteristic=await service.getCharacteristic(NIIMBOT_CHAR);await characteristic.startNotifications();characteristic.addEventListener('characteristicvaluechanged',onNotify);log('Characteristic valmis; saadan Connect käsu...');const response=waitFor(0xc2,3000);try{await writeRaw(buildConnectPacket())}catch(e){cancelWait();throw e}const resp=await response;log(resp?'Connect vastus: '+toHex(resp):'Connect vastust ei tulnud; GATT ühendus olemas');firstPrintAfterConnect=true;log('Esimese printimise diagnostika aktiveeritud');status('Ühendatud: '+(device.name||'Printer'))}catch(e){log('Ühenduse viga: '+e.message);status('Viga ühendamisel: '+e.message);if(device?.gatt?.connected)device.gatt.disconnect();characteristic=null;server=null}finally{connecting=false;buttons()}}
 async function readServices(){try{if(!device?.gatt?.connected||!server){log('Printer pole ühendatud');return}const services=await server.getPrimaryServices();log('Services found: '+services.length);for(const s of services){log('SERVICE: '+s.uuid);for(const c of await s.getCharacteristics()){const props=[];for(const p in c.properties)if(c.properties[p])props.push(p);log('  CHAR: '+c.uuid+'; PROPS: '+props.join(', '))}}}catch(e){log('SERVICE READ ERROR: '+e.message)}}
-function labelSize(){const widthMm=Number($('labelWidth').value),heightMm=Number($('labelHeight').value);if(!Number.isFinite(widthMm)||widthMm<10||widthMm>100||!Number.isFinite(heightMm)||heightMm<8||heightMm>15)throw new Error('Kontrolli mõõte: pikkus 10–100 mm, laius 8–15 mm');return {widthMm,heightMm}}
+function labelSize(){const widthMm=Number($('labelWidth').value),heightMm=Number($('labelHeight').value);if(!Number.isFinite(widthMm)||widthMm<10||widthMm>100||!Number.isFinite(heightMm)||heightMm<8||heightMm>15)throw new Error('Kontrolli mõõte: laius 8–15 mm, pikkus 10–100 mm');return {widthMm,heightMm}}
+function shortenArticleName(text){
+  const value=String(text??'');
+  const maxLength=35;
+  const suffixLength=10;
+  if(value.length<=maxLength)return value;
+  const prefixLength=maxLength-3-suffixLength;
+  return value.slice(0,prefixLength)+'...'+value.slice(-suffixLength);
+}
 // Eelvaade: pikk külg horisontaalis; tekst ja triipkood on õiget pidi.
 function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   if(!articleNo.trim())throw new Error('Sisesta artikli number');
@@ -99,7 +108,7 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   const barcodeLeft=edge+quietZone;
   if(barcodeWidth/modules<1)throw new Error('Triipkood ei mahu etiketile');
   ctx.font='bold '+nameFont+'px Arial';
-  ctx.fillText(articleName,longPx/2,edge,longPx-2*edge);
+  ctx.fillText(shortenArticleName(articleName),longPx/2,edge,longPx-2*edge);
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(bc,0,0,bc.width,bc.height,barcodeLeft,barcodeTop,barcodeWidth,barcodeHeight);
   ctx.font='bold '+numFont+'px Arial';
@@ -125,7 +134,7 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
 }
 function generateLabel(){try{const {widthMm,heightMm}=labelSize();buildLabelBitmap($('articleNo').value,$('articleName').value,widthMm,heightMm)}catch(e){log('Eelvaate viga: '+e.message)}}
 // Trükiprotokoll säilitatud v0.1.0-st; ridade arv on nüüd paberi pikkus.
-async function printLabel(){if(printing)return;try{if(!characteristic||!device?.gatt?.connected)throw new Error('Printer pole ühendatud');printing=true;buttons();const {widthMm,heightMm}=labelSize();const density=Number($('density').value),labelType=Number($('labelType').value);const {rows,widthPx,heightPx}=buildLabelBitmap($('articleNo').value,$('articleName').value,widthMm,heightMm);log('Landscape '+widthMm+' × '+heightMm+' mm; printeri bitmap '+widthPx+' × '+heightPx+' px');status('Prindin...');log('SetDensity...');await sendAndWait(0x21,[density],0x31);log('SetLabelType...');await sendAndWait(0x23,[labelType],0x33);log('PrintStart...');await sendAndWait(0x01,[0x01],0x02);log('PrintClear...');await sendAndWait(0x20,[0x01],0x30);log('PageStart...');await sendAndWait(0x03,[0x01],0x04);log('SetPageSize...');await sendAndWait(0x13,[(heightPx>>8)&255,heightPx&255,(widthPx>>8)&255,widthPx&255],0x14);log('PrintQuantity (1 tk)...');await sendAndWait(0x15,[0,1],0x16);log('Saadan pildiandmeid...');for(let r=0;r<rows.length;r++){if(!device?.gatt?.connected)throw new Error('BT ühendus katkes printimise ajal');const row=rows[r],hi=(r>>8)&255,lo=r&255;if(row.every(b=>b===0))await writeRaw(buildPacket(0x84,[hi,lo,1]));else await writeRaw(buildPacket(0x85,[hi,lo,0,0,0,1,...row]));await sleep(4)}log('Pildiandmed saadetud');log('PageEnd...');await sendAndWait(0xe3,[1],0xe4);log('Ootan trükistaatust...');let finished=false;for(let i=0;i<30&&!finished;i++){const data=await sendAndWait(0xa3,[1],0xb3,1500);if(data&&data.length>=2){const index=(data[0]<<8)|data[1];log('Lehekülje indeks: '+index);if(index>=1)finished=true}if(!finished)await sleep(300)}log('PrintEnd...');await sendAndWait(0xf3,[1],0xf4);log('Printimise käskude jada lõpetatud'+(finished?'':' (valmimist ei kinnitatud)'));status(finished?'Prinditud':'Printimise käsud saadetud; kontrolli printerit')}catch(e){log('PRINT ERROR: '+e.message);status('Printimise viga: '+e.message)}finally{printing=false;buttons()}}
+async function printLabel(){if(printing)return;try{if(!characteristic||!device?.gatt?.connected)throw new Error('Printer pole ühendatud');printing=true;buttons();const {widthMm,heightMm}=labelSize();const density=Number($('density').value),labelType=Number($('labelType').value);const {rows,widthPx,heightPx}=buildLabelBitmap($('articleNo').value,$('articleName').value,widthMm,heightMm);log('Landscape '+heightMm+' × '+widthMm+' mm; printeri bitmap '+widthPx+' × '+heightPx+' px');status('Prindin...');if(firstPrintAfterConnect){log('First print after connect');log('Running warmup sequence');log('Requesting printer status');log('Status request sent');const warmupStatus=await sendAndWait(0xa3,[1],0xb3,1500);log('Printer status received: '+(warmupStatus?toHex(warmupStatus):'vastust ei saadud'));log('Status received: '+(warmupStatus?toHex(warmupStatus):'vastust ei saadud'));firstPrintAfterConnect=false;log('Starting actual print');log('Starting print')}log('SetDensity...');await sendAndWait(0x21,[density],0x31);log('SetLabelType...');await sendAndWait(0x23,[labelType],0x33);log('PrintStart...');await sendAndWait(0x01,[0x01],0x02);log('PrintClear...');await sendAndWait(0x20,[0x01],0x30);log('PageStart...');await sendAndWait(0x03,[0x01],0x04);log('SetPageSize...');await sendAndWait(0x13,[(heightPx>>8)&255,heightPx&255,(widthPx>>8)&255,widthPx&255],0x14);log('PrintQuantity (1 tk)...');await sendAndWait(0x15,[0,1],0x16);log('Saadan pildiandmeid...');for(let r=0;r<rows.length;r++){if(!device?.gatt?.connected)throw new Error('BT ühendus katkes printimise ajal');const row=rows[r],hi=(r>>8)&255,lo=r&255;if(row.every(b=>b===0))await writeRaw(buildPacket(0x84,[hi,lo,1]));else await writeRaw(buildPacket(0x85,[hi,lo,0,0,0,1,...row]));await sleep(4)}log('Pildiandmed saadetud');log('PageEnd...');await sendAndWait(0xe3,[1],0xe4);log('Ootan trükistaatust...');let finished=false;for(let i=0;i<30&&!finished;i++){const data=await sendAndWait(0xa3,[1],0xb3,1500);if(data&&data.length>=2){const index=(data[0]<<8)|data[1];log('Lehekülje indeks: '+index);if(index>=1)finished=true}if(!finished)await sleep(300)}log('PrintEnd...');await sendAndWait(0xf3,[1],0xf4);log('Printimise käskude jada lõpetatud'+(finished?'':' (valmimist ei kinnitatud)'));status(finished?'Prinditud':'Printimise käsud saadetud; kontrolli printerit')}catch(e){log('PRINT ERROR: '+e.message);status('Printimise viga: '+e.message)}finally{printing=false;buttons()}}
 showSystemInfo();generateLabel();buttons();
 </script>
 </body>
