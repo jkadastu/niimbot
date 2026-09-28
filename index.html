@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NiimbotWebPrint v0.1.6 — D110_M</title>
+<title>NiimbotWebPrint v0.1.7 — D110_M</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:15px;background:#f5f5f5;color:#222}
@@ -18,12 +18,12 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 </style>
 </head>
 <body>
-<h1>NiimbotWebPrint v0.1.6</h1>
+<h1>NiimbotWebPrint v0.1.7</h1>
 <p>D110_M v4 test rakendus (BLE) · 12 × 40 mm landscape</p>
 <div class="card"><h3>Süsteemiinfo</h3><div id="sysinfo"></div></div>
 <div class="card">
-<label for="articleNo">Artikli number</label><input id="articleNo" value="123456789" oninput="generateLabel()">
-<label for="articleName">Artikli nimetus</label><input id="articleName" value="Testtoode" oninput="generateLabel()">
+<label for="articleNo">Artikli number</label><input id="articleNo" value="2150042063" oninput="generateLabel()">
+<label for="articleName">Artikli nimetus</label><input id="articleName" value="Standard PC HP Engage Flex Pro G2 SFF" oninput="generateLabel()">
 <div class="row2">
 <div><label for="labelHeight">Laius (mm)</label><input id="labelHeight" type="number" min="8" max="15" value="12" oninput="generateLabel()"></div>
 <div><label for="labelWidth">Pikkus (mm)</label><input id="labelWidth" type="number" min="10" max="100" value="40" oninput="generateLabel()"></div>
@@ -43,10 +43,10 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 <div class="card"><h3>Etiketi eelvaade (12 × 40 mm, õiget pidi)</h3><div class="label"><canvas id="previewCanvas" aria-label="Etiketi eelvaade"></canvas></div><small>Üleval nimetus, keskel madalam Code128, all suurem artiklinumber. Triipkoodi otstes on vaba turvatsoon.</small></div>
 <div class="card"><h3>Diagnostika logi</h3><div id="log"></div></div>
 <script>
-// D110_M ühendus kasutab v4 printimisjada ja 300 dpi geomeetriat.
+// D110_M ühendus kasutab v4 printimisjada ja 203 dpi geomeetriat (8 punkti/mm).
 const NIIMBOT_SERVICE='e7810a71-73ae-499d-8c15-faa9aef0c3f2';
 const NIIMBOT_CHAR='bef8d6c9-9c21-4c9e-b632-bd58c1009f9f';
-const DOTS_PER_MM=12;
+const DOTS_PER_MM=8;
 let device=null,server=null,characteristic=null,pendingWait=null,printing=false,connecting=false;
 let firstPrintAfterConnect=true;
 const $=id=>document.getElementById(id);
@@ -89,11 +89,12 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   ctx.fillStyle='#fff';ctx.fillRect(0,0,longPx,shortPx);
   ctx.fillStyle='#000';ctx.textAlign='center';ctx.textBaseline='top';
   // 12 x 40 mm: nimi uleval, madalam triipkood keskel, number all.
-  const edge=4,gap=2;
+  // Sisu turvaala: suurem varu prindipea ülemise ja parema serva kõrval.
+  const edgeX=8,edgeY=6,gap=2;
   const nameFont=Math.max(12,Math.round(shortPx*0.20));
   const numFont=Math.max(15,Math.round(shortPx*0.26));
-  const barcodeTop=edge+nameFont+gap;
-  const barcodeHeight=shortPx-2*edge-nameFont-numFont-2*gap;
+  const barcodeTop=edgeY+nameFont+gap;
+  const barcodeHeight=shortPx-2*edgeY-nameFont-numFont-2*gap;
   if(barcodeHeight<14)throw new Error('Etikett on kolme rea jaoks liiga kitsas');
   const bc=document.createElement('canvas');
   // Mooduli laius 1 px alusbitmapis; suurendame ainult taisarvuliselt.
@@ -101,19 +102,19 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   const modules=bc.width;
   // Taidame pika telje nii palju kui voimalik, jattes otstesse
   // vahemalt 10 mooduli laiuse valge turvatsooni.
-  const moduleScale=(longPx-2*edge)/(modules+20);
+  const moduleScale=(longPx-2*edgeX)/(modules+12);
   if(moduleScale<1)throw new Error('Artiklinumber on selle etiketi jaoks liiga pikk: turvatsoon ei mahu');
-  const quietZone=Math.ceil(10*moduleScale);
-  const barcodeWidth=longPx-2*edge-2*quietZone;
-  const barcodeLeft=edge+quietZone;
+  const quietZone=Math.ceil(6*moduleScale);
+  const barcodeWidth=longPx-2*edgeX-2*quietZone;
+  const barcodeLeft=edgeX+quietZone;
   if(barcodeWidth/modules<1)throw new Error('Triipkood ei mahu etiketile');
   ctx.font='bold '+nameFont+'px Arial';
-  ctx.fillText(shortenArticleName(articleName),longPx/2,edge,longPx-2*edge);
+  ctx.fillText(shortenArticleName(articleName),longPx/2,edgeY,longPx-2*edgeX);
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(bc,0,0,bc.width,bc.height,barcodeLeft,barcodeTop,barcodeWidth,barcodeHeight);
   ctx.font='bold '+numFont+'px Arial';
-  ctx.fillText(articleNo,longPx/2,barcodeTop+barcodeHeight+gap,longPx-2*edge);
-  // D110_M v4: 300 dpi; fuusiline X = 12 mm pea, Y = 40 mm paberi etteanne.
+  ctx.fillText(articleNo,longPx/2,barcodeTop+barcodeHeight+gap,longPx-2*edgeX);
+  // D110_M v4: 203 dpi; fuusiline X = 12 mm pea, Y = 40 mm paberi etteanne.
   // Poo rame bitmap'i 90 kraadi paripaeva, mitte ainult CSS eelvaadet.
   const physical=document.createElement('canvas');
   physical.width=shortPx;physical.height=longPx;
