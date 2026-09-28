@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NiimbotWebPrint v0.2.0 — D110_M</title>
+<title>NiimbotWebPrint v0.2.1 — D110_M</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:15px;background:#f5f5f5;color:#222}
@@ -18,7 +18,7 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 </style>
 </head>
 <body>
-<h1>NiimbotWebPrint v0.2.0</h1>
+<h1>NiimbotWebPrint v0.2.1</h1>
 <p>D110_M v4 test rakendus (BLE) · 12 × 40 mm landscape</p>
 <div class="card"><h3>Süsteemiinfo</h3><div id="sysinfo"></div></div>
 <div class="card">
@@ -93,9 +93,11 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   const edgeX=8,edgeY=6,gap=2;
   const nameFont=Math.max(12,Math.round(shortPx*0.20));
   const numFont=Math.max(19,Math.round(shortPx*0.34)+1);
-  const barcodeExtraHeight=3;
-  const barcodeTop=edgeY+nameFont+gap-barcodeExtraHeight;
-  const barcodeHeight=shortPx-2*edgeY-nameFont-numFont-2*gap+barcodeExtraHeight;
+  // Paiguta triipkood ridade vahele nii, et mõlemale poole jääb 6 px.
+  const barcodeRowGap=6;
+  const numberTop=shortPx-edgeY-numFont+8;
+  const barcodeTop=edgeY+nameFont+gap;
+  const barcodeHeight=numberTop-barcodeRowGap-barcodeTop;
   if(barcodeHeight<14)throw new Error('Etikett on kolme rea jaoks liiga kitsas');
   const bc=document.createElement('canvas');
   // Mooduli laius 1 px alusbitmapis; suurendame ainult taisarvuliselt.
@@ -114,7 +116,7 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(bc,0,0,bc.width,bc.height,barcodeLeft,barcodeTop,barcodeWidth,barcodeHeight);
   ctx.font='bold '+numFont+'px Arial';
-  ctx.fillText(articleNo,longPx/2,barcodeTop+barcodeHeight+gap+8,longPx-2*edgeX);
+  ctx.fillText(articleNo,longPx/2,numberTop,longPx-2*edgeX);
   // D110_M v4: 203 dpi; fuusiline X = 12 mm pea, Y = 40 mm paberi etteanne.
   // Poo rame bitmap'i 90 kraadi paripaeva, mitte ainult CSS eelvaadet.
   const physical=document.createElement('canvas');
