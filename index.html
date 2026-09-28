@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NiimbotWebPrint v0.1.8 — D110_M</title>
+<title>NiimbotWebPrint v0.1.9 — D110_M</title>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;margin:15px;background:#f5f5f5;color:#222}
@@ -18,7 +18,7 @@ button{padding:10px 15px;margin:5px 5px 5px 0;cursor:pointer}button:disabled{opa
 </style>
 </head>
 <body>
-<h1>NiimbotWebPrint v0.1.8</h1>
+<h1>NiimbotWebPrint v0.1.9</h1>
 <p>D110_M v4 test rakendus (BLE) · 12 × 40 mm landscape</p>
 <div class="card"><h3>Süsteemiinfo</h3><div id="sysinfo"></div></div>
 <div class="card">
@@ -113,7 +113,7 @@ function buildLabelBitmap(articleNo,articleName,widthMm,heightMm){
   ctx.imageSmoothingEnabled=false;
   ctx.drawImage(bc,0,0,bc.width,bc.height,barcodeLeft,barcodeTop,barcodeWidth,barcodeHeight);
   ctx.font='bold '+numFont+'px Arial';
-  ctx.fillText(articleNo,longPx/2,barcodeTop+barcodeHeight+gap+3,longPx-2*edgeX);
+  ctx.fillText(articleNo,longPx/2,barcodeTop+barcodeHeight+gap+8,longPx-2*edgeX);
   // D110_M v4: 203 dpi; fuusiline X = 12 mm pea, Y = 40 mm paberi etteanne.
   // Poo rame bitmap'i 90 kraadi paripaeva, mitte ainult CSS eelvaadet.
   const physical=document.createElement('canvas');
